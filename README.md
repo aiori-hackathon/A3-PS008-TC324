@@ -1,35 +1,51 @@
-# AIORI-3-HACKATHON-PROJECTS
-This repository will contain the code and resources for the AIORI-3 hackathon that will be developed during the AIORI-3
-## Team Introduction Video
+# AIORI PS-008 — Network Management Agent for Reviewed Configuration Changes
 
 **AIORI Hackathon 3 — Ultimateblueteam**
-Problem Statement: PS008 — Network Management Agent for Reviewed Configuration Changes
-YouTube Link: https://youtube.com/shorts/BY337KfnYno?feature=share
-# AIORI PS008 — Network Management Agent for Reviewed Configuration Changes
+
+**Problem Statement:** PS008 — Network Management Agent for Reviewed Configuration Changes
+
+## Team Introduction Video
+
+**YouTube Link:** https://youtube.com/shorts/BY337KfnYno?feature=share
+
+---
 
 ## 1. Project Overview
 
-The Network Management Agent is a prototype designed to validate proposed network configuration changes, generate candidate configurations, request human approval, and simulate safe deployment.
+The Network Management Agent is a prototype designed to validate proposed network configuration changes, generate candidate configurations, require human approval, and simulate safe deployment.
 
-The system includes configuration validation, routing-loop detection, approval checks, rollback handling, and audit logging.
+The system aims to reduce the risks associated with network configuration changes by validating proposed modifications before deployment and preventing unapproved changes from being applied.
+
+The prototype includes interface IP validation, static route validation, routing-loop detection, candidate integrity checks, stale-configuration protection, deployment verification, rollback handling, and audit logging.
+
+The project uses an in-memory router testbed to demonstrate the configuration management workflow without modifying physical network devices.
 
 ## 2. Objectives
 
+The main objectives of this project are:
+
 - Accept supported network configuration intents.
-- Validate proposed changes before deployment.
-- Generate candidate configurations for review.
-- Require human approval before deployment.
-- Detect routing-loop risks using the implemented topology validator.
+- Validate requested changes before generating a candidate configuration.
+- Generate candidate configurations for human review.
+- Require explicit approval before deployment.
+- Detect invalid interface configurations and conflicting static routes.
+- Identify potential routing-loop risks using the implemented topology validator.
+- Detect modifications to a candidate after approval when its stored fingerprint remains unchanged.
+- Prevent deployment when the original router configuration has changed since the candidate was generated.
+- Verify the result of a simulated deployment.
 - Restore the previous configuration when simulated deployment verification fails.
-- Record workflow events in an audit log.
+- Record important workflow events in a local JSON audit log.
+- Test the implementation using an automated test suite.
 
 ## 3. Supported Configuration Intents
 
-### Change Interface IP
+The prototype supports two configuration intent types.
 
-Changes the IP address assigned to a supported router interface.
+### 3.1 Change Interface IP
 
-Example:
+This intent changes the IP address assigned to a supported router interface.
+
+**Example:**
 
 ```json
 {
@@ -40,11 +56,15 @@ Example:
 }
 ```
 
-### Add Static Route
+The system validates the intent, checks the target router and interface, validates the proposed IP address, and generates a candidate configuration for review.
 
-Adds a static route to a router's configuration.
+The proposed configuration is not applied to the router state during candidate generation.
 
-Example:
+### 3.2 Add Static Route
+
+This intent adds a static route to a supported router's configuration.
+
+**Example:**
 
 ```json
 {
@@ -55,69 +75,51 @@ Example:
 }
 ```
 
-## 4. System Workflow
+The route validator checks the route's address syntax, destination conflicts, and next-hop reachability using the implemented connected-network model.
 
-1. Validate the requested intent.
-2. Generate a candidate configuration.
-3. Validate the proposed configuration and topology.
-4. Present the candidate for human review.
-5. Stop if approval is not granted.
-6. Simulate deployment of an approved candidate.
-7. Verify the resulting configuration.
-8. Restore the previous configuration if simulated verification fails.
-9. Record relevant events in the audit log.
+A valid route is prepared as a candidate configuration for human review before deployment.
 
-## 5. Safety Features
+## 4. System Architecture
 
-- Intent validation.
-- Interface and IP validation.
-- Static route validation.
-- Routing-loop checks.
-- Human approval gate.
-- Stale-configuration protection.
-- Deployment verification.
-- Automatic rollback in the simulation.
-- JSON-based audit logging.
+The application is organized into modules responsible for validation, candidate generation, approval, deployment, topology checks, and audit logging.
 
-## 6. Project Structure
+### Main Components
 
-The `src` directory contains the application modules, router configuration, validators, approval and deployment logic, audit logging, and automated tests.
+| Component | Responsibility |
+|---|---|
+| `routers.py` | Maintains the simulated router configurations |
+| `intents.py` | Validates supported configuration intent structures and values |
+| `validator.py` | Validates interface configuration changes |
+| `route_validator.py` | Validates static route configurations |
+| `topology_validator.py` | Detects cycles in the implemented router topology graph |
+| `candidate_generator.py` | Creates and validates proposed configuration candidates |
+| `approval.py` | Records human review decisions and checks candidate fingerprints |
+| `deployment.py` | Simulates deployment, verifies outcomes, and handles rollback |
+| `audit_log.py` | Records workflow events in a local JSON audit log |
+| `main.py` | Coordinates the complete configuration management workflow |
 
-## 7. Running the Project
+Automated tests are included in the `src` directory.
 
-Run the demonstration from the project root:
+## 5. System Workflow
 
-```powershell
-python .\src\main.py
-```
+The application follows a controlled configuration change workflow.
 
-The current demonstration approves a candidate and simulates deployment verification failure to demonstrate rollback.
+1. **Intent validation:** The requested configuration change is checked for valid structure and supported values.
+2. **Candidate generation:** A proposed configuration is created without immediately modifying the router's current configuration.
+3. **Configuration validation:** The proposed change is checked against the relevant interface, IP address, or static route rules.
+4. **Topology validation:** The implemented topology validator checks for routing cycles.
+5. **Human review:** A reviewer approves or rejects the candidate.
+6. **Approval verification:** Deployment is blocked if the candidate is not approved or if its integrity check fails.
+7. **Stale configuration check:** The deployment process checks whether the router configuration still matches the candidate's original configuration.
+8. **Deployment:** An approved and valid candidate is applied to the simulated router configuration.
+9. **Verification:** The deployment process checks the simulated deployment result.
+10. **Rollback:** If simulated deployment verification fails, the previous configuration is restored and verified.
+11. **Audit logging:** Relevant workflow events and outcomes are recorded in the local audit log.
 
-## 8. Running Tests
+## 6. Safety Features
 
-Run the test suite:
+### 6.1 Intent Validation
 
-```powershell
-python -m unittest discover -s src -p "test_*.py" -v
-```
+The system validates incoming configuration requests before processing them. Unsupported intent types and invalid input values are rejected.
 
-The current test suite has passed 19 tests in the development environment.
-
-Run the command again after any code changes to confirm the current result.
-
-## 9. Implementation Limitations
-
-- Router configurations are maintained in memory.
-- Deployment is simulated; the prototype does not configure physical routers.
-- The demonstration reviewer is hard-coded.
-- Routing-loop detection is based on the implemented topology model and does not represent a complete production routing simulator.
-- Audit records are stored locally in a JSON file.
-
-## 10. Future Improvements
-
-- Add an authenticated human-review interface.
-- Integrate with a network device simulator.
-- Improve routing analysis with destination-aware forwarding checks.
-- Add stronger audit-log integrity protections.
-- Expand automated tests for additional invalid and conflicting configurations.
-- Develop a demonstration interface for reviewers.
+### 6.2 Interface and IP Validation

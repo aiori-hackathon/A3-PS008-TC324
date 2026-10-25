@@ -106,20 +106,42 @@ def run_workflow(intent, decision, simulate_failure=False):
     return candidate, message
 
 
+
 if __name__ == "__main__":
-    example_intent = {
+    # Demo 1: Successful deployment
+    successful_intent = {
         "type": "change_interface_ip",
         "router": "R1",
         "interface": "eth0",
         "new_ip": "10.0.12.10/24",
     }
 
+    print("\n========== DEMO 1: SUCCESSFUL DEPLOYMENT ==========")
     print("Initial R1 configuration:", routers["R1"])
 
     run_workflow(
-        intent=example_intent,
+        intent=successful_intent,
+        decision="approve",
+        simulate_failure=False,
+    )
+
+    print("Final R1 configuration:", routers["R1"])
+
+    # Demo 2: Failed deployment with rollback
+    rollback_intent = {
+        "type": "change_interface_ip",
+        "router": "R1",
+        "interface": "eth0",
+        "new_ip": "10.0.12.20/24",
+    }
+
+    print("\n========== DEMO 2: DEPLOYMENT FAILURE AND ROLLBACK ==========")
+    print("Initial R1 configuration:", routers["R1"])
+
+    run_workflow(
+        intent=rollback_intent,
         decision="approve",
         simulate_failure=True,
     )
 
-    print("\nFinal R1 configuration:", routers["R1"])
+    print("Final R1 configuration:", routers["R1"])

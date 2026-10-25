@@ -109,12 +109,36 @@ class TestWorkflowSafety(unittest.TestCase):
         review_candidate(candidate, "approve", "test-reviewer")
 
         with patch("deployment.routers", test_network):
-            result, message = deploy_candidate(
+            success, message = deploy_candidate(
                 candidate, simulate_failure=True
             )
 
+        self.assertFalse(success)
         self.assertEqual(test_network["R1"], original_r1)
         self.assertEqual(candidate["status"], "ROLLED_BACK")
+
+    def test_modified_candidate_after_approval_is_not_deployed(self):
+        test_network = copy.deepcopy(routers)
+        original_r1 = copy.deepcopy(test_network["R1"])
+
+        candidate = {
+            "router": "R1",
+            "before": copy.deepcopy(test_network["R1"]),
+            "proposed": copy.deepcopy(test_network["R1"]),
+            "status": "PENDING_REVIEW"
+        }
+
+        review_candidate(candidate, "approve", "test-reviewer")
+
+        # Simulate modification after human approval.
+        candidate["proposed"]["interfaces"]["eth0"] = "10.0.12.99/24"
+
+        with patch("deployment.routers", test_network):
+            success, message = deploy_candidate(candidate)
+
+        self.assertFalse(success)
+        self.assertEqual(test_network["R1"], original_r1)
+        self.assertNotEqual(candidate["status"], "DEPLOYED")
 
 
 if __name__ == "__main__":

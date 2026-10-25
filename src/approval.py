@@ -1,5 +1,25 @@
-
+import hashlib
+import hmac
+import json
 from datetime import datetime, timezone
+
+
+def _candidate_fingerprint(candidate):
+    """Create a fingerprint of the candidate configuration and router."""
+
+    approved_data = {
+        "router": candidate.get("router"),
+        "before": candidate.get("before"),
+        "proposed": candidate.get("proposed"),
+    }
+
+    serialized = json.dumps(
+        approved_data,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+    return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
 
 def review_candidate(candidate, decision, reviewer):
@@ -17,10 +37,19 @@ def review_candidate(candidate, decision, reviewer):
     if decision not in ("approve", "reject"):
         return False, "Decision must be approve or reject."
 
-    if not candidate.get("before") or not candidate.get("proposed"):
-        return False, "Candidate configuration is missing."
+    if not isinstance(candidate.get("before"), dict):
+        return False, "Candidate's original configuration is invalid."
+
+    if not isinstance(candidate.get("proposed"), dict):
+        return False, "Candidate's proposed configuration is invalid."
+
+    if not isinstance(candidate.get("router"), str):
+        return False, "Candidate router is invalid."
 
     if decision == "approve":
+        candidate["approved_fingerprint"] = _candidate_fingerprint(
+            candidate
+        )
         candidate["status"] = "APPROVED"
     else:
         candidate["status"] = "REJECTED"
@@ -32,13 +61,36 @@ def review_candidate(candidate, decision, reviewer):
 
 
 def can_deploy(candidate):
-    """Only an approved candidate may proceed to deployment."""
+    """Check approval and detect candidate modifications after review."""
 
-    return (
-        isinstance(candidate, dict)
-        and candidate.get("status") == "APPROVED"
-        and bool(candidate.get("reviewer"))
-        and bool(candidate.get("reviewed_at"))
+    if not isinstance(candidate, dict):
+        return False
+
+    if candidate.get("status") != "APPROVED":
+        return False
+
+    if not isinstance(candidate.get("reviewer"), str):
+        return False
+
+    if not candidate["reviewer"].strip():
+        return False
+
+    if not candidate.get("reviewed_at"):
+        return False
+
+    approved_fingerprint = candidate.get("approved_fingerprint")
+
+    if not isinstance(approved_fingerprint, str):
+        return False
+
+    try:
+        current_fingerprint = _candidate_fingerprint(candidate)
+    except (TypeError, ValueError):
+        return False
+
+    return hmac.compare_digest(
+        approved_fingerprint,
+        current_fingerprint,
     )
 
 
@@ -54,8 +106,8 @@ if __name__ == "__main__":
 
     success, message = review_candidate(
         candidate,
-        decision="reject",
-        reviewer="mentor"
+        decision="approve",
+        reviewer="mentor",
     )
 
     print(message)

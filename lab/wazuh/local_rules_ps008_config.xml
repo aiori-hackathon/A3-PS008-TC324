@@ -1,0 +1,28 @@
+<!-- Append this <group> to /var/ossec/etc/rules/local_rules.xml on the WAZUH SERVER.
+     Test:    sudo /var/ossec/bin/wazuh-analysisd -t
+     Apply:   sudo systemctl restart wazuh-manager
+     Parent rules (built into Wazuh): 550 = file modified, 554 = file added, 553 = file deleted -->
+<group name="ps008,config_monitoring,">
+
+  <rule id="100110" level="10">
+    <if_sid>550</if_sid>
+    <field name="file">/etc/ps008/privacy.conf</field>
+    <description>PS008: privacy configuration file MODIFIED.</description>
+    <group>gdpr_II_5.1.f,gdpr_IV_35.7.d,</group>
+  </rule>
+
+  <rule id="100111" level="8">
+    <if_sid>554</if_sid>
+    <field name="file">/etc/ps008/</field>
+    <description>PS008: new file added to the managed config directory.</description>
+    <group>gdpr_II_5.1.f,</group>
+  </rule>
+
+  <rule id="100112" level="12">
+    <if_sid>553</if_sid>
+    <field name="file">/etc/ps008/</field>
+    <description>PS008: managed configuration file DELETED.</description>
+    <group>gdpr_II_5.1.f,</group>
+  </rule>
+
+</group>

@@ -61,3 +61,9 @@ Screenshots: see `lab/screenshots/`.
 - Detection only: Wazuh reports changes, it does not approve, block or roll them back.
 - The reviewed-change workflow in `src/` still operates on simulated routers; it is not yet linked to this file.
 - Single lab environment; rules match the fixed path `/etc/ps008/`.
+ 
+## Evidence 
+ 
+![Rules 100110-100112 firing from the agent](screenshots/02-events-rules-100110-100112.png) 
+![SCA events: CIS Ubuntu 22.04 benchmark results](screenshots/05-sca-cis-ubuntu.png) 
+![Level 12+ filter isolates the deletion alert](screenshots/07-level12-filter.png) 

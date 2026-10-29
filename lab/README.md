@@ -61,3 +61,11 @@ Screenshots: see `lab/screenshots/`.
 - Detection only: Wazuh reports changes, it does not approve, block or roll them back.
 - The reviewed-change workflow in `src/` still operates on simulated routers; it is not yet linked to this file.
 - Single lab environment; rules match the fixed path `/etc/ps008/`.
+ 
+## Evidence
+
+![Agent active](screenshots/01-agent-active.png)
+![Rules 100110-100112 firing](screenshots/02-events-rules-100110-100112.png)
+![File diff and GDPR tags](screenshots/03-fim-diff.png)
+![GDPR view](screenshots/04-gdpr-view.png)
+![SCA CIS Ubuntu 22.04 results](screenshots/05-sca-cis-ubuntu.png)

@@ -67,3 +67,12 @@ Screenshots: see `lab/screenshots/`.
 ![Rules 100110-100112 firing from the agent](screenshots/02-events-rules-100110-100112.png) 
 ![SCA events: CIS Ubuntu 22.04 benchmark results](screenshots/05-sca-cis-ubuntu.png) 
 ![Level 12+ filter isolates the deletion alert](screenshots/07-level12-filter.png) 
+ 
+## Evidence 
+ 
+![Agent active](screenshots/01-agent-active.png) 
+![Rules 100110-100112 firing](screenshots/02-events-rules-100110-100112.png) 
+![File diff and GDPR tags](screenshots/03-fim-diff.png) 
+![GDPR view](screenshots/04-gdpr-view.png) 
+![SCA CIS Ubuntu 22.04 results](screenshots/05-sca-cis-ubuntu.png) 
+![Rule XML with parent rule 550](screenshots/06-rule-xml.png) 

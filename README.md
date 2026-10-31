@@ -13,7 +13,7 @@
 ---
 ## Demonstration Video
 
-[![Watch the PS008 Project Demonstration](https://img.youtube.com/vi/xSbNdJC6a9U/hqdefault.jpg)](https://youtu.be/xSbNdJC6a9U)
+[![Watch the PS008 Project Demonstration](https://img.youtube.com/vi/xSbNdJC6a9U/maxresdefault.jpg?refresh=20261031)](https://youtu.be/xSbNdJC6a9U)
 
 **[▶ Watch Our Full Project Demonstration on YouTube](https://youtu.be/xSbNdJC6a9U)**
 

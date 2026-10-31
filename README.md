@@ -65,6 +65,13 @@ The protected management interface is **`enp0s8`**, with policy address **`192.1
 **Evidence note:** The final version 6 alert was verified in the live demonstration. The screenshots below document the earlier Wazuh FIM and compliance monitoring lab; they should not be mistaken for screenshots of that final v6 event. See the [evaluator walkthrough](docs/evaluator-guide.md) for the evidence-to-requirement mapping.
 
 ## Wazuh evidence gallery
+### Final demonstration — Approved policy deployment detected by Wazuh
+
+![Wazuh FIM evidence: approved policy version 5 to 6](lab/screenshots/06-approved-policy-v6-wazuh-alert.png.png)
+
+**Verified result:** Wazuh detected a real-time modification to `/etc/ps008/managed/router-policy.json` after the reviewed deployment updated the managed policy from version 5 to version 6. The event records `syscheck.event = modified` and changed file-integrity checksums.
+
+---
 
 ### Agent connectivity
 

@@ -1,491 +1,154 @@
-<!-- PS008 EVALUATOR START -->
-## 🚀 Start Here — Hackathon Evaluator Guide
+<div align="center">
 
-**AIORI Hackathon 3 · Problem Statement PS008 · Team Ultimateblueteam**
+# PS008 · Reviewed Network Configuration Management
 
-**What we built:** A reviewed network-configuration prototype with candidate validation, an explicit approval/rejection gate, protected management settings, versioned managed-policy deployment, backups, rollback handling, audit records, and independent Wazuh file-integrity monitoring. The project also includes an in-memory router simulator for interface and route changes.
+**AIORI Hackathon 3 · Team Ultimateblueteam**
 
-| Lab component | Host-only IP | Role |
+*A Python-based review-before-deploy prototype with configuration validation, protected management settings, rollback, audit logging, and Wazuh file-integrity monitoring.*
+
+[**Evaluator Walkthrough**](docs/evaluator-guide.md) · [**Architecture**](docs/architecture.md) · [**Tests**](evidence/test-results.txt) · [**Wazuh Evidence**](lab/README.md#evidence) · [**Team Video**](https://youtube.com/shorts/BY337KfnYno?feature=share)
+
+</div>
+
+---
+
+## At a glance
+
+| | |
+|---|---|
+| **Problem statement** | PS008 — Network Management Agent for Reviewed Configuration Changes |
+| **Goal** | Prevent unreviewed or unsafe configuration changes from being deployed |
+| **Core workflow** | Intent → Validate → Candidate → Human review → Safety checks → Deploy → Audit → Monitor |
+| **Deployment target** | Versioned JSON policy on the Ubuntu Router VM |
+| **Monitoring** | Wazuh File Integrity Monitoring (FIM) |
+| **Validation** | 26 automated tests passed in the recorded development run |
+
+> **Implementation scope:** The prototype simulates router interface and route changes in memory. Its separate real deployment path writes an approved **managed JSON policy file**, not live Linux interfaces, routing tables, or physical network devices.
+
+## System architecture
+
+```mermaid
+flowchart LR
+    A[Configuration intent] --> B[Validate and generate candidate]
+    B --> C{Human review}
+    C -->|Rejected| D[Block deployment]
+    C -->|Approved| E[Fingerprint, baseline and management safety checks]
+    E --> F[Backup and atomically write managed policy]
+    F --> G[Verify / rollback on failure]
+    F --> H[Local audit log]
+    F --> I[Wazuh Agent FIM]
+    I --> J[Wazuh Server and Dashboard]
+```
+
+[Explore the full architecture and module relationships](docs/architecture.md).
+
+### Lab topology
+
+| Component | Host-only IP | Responsibility |
 |---|---|---|
 | **Wazuh Server VM** | **`192.168.56.3`** | Wazuh manager, indexer, dashboard |
 | **Ubuntu Router / Wazuh Agent VM** | **`192.168.56.5`** | Python workflow, managed policy, Wazuh agent |
 
-**Judge-friendly navigation:**
+The protected management interface is **`enp0s8`**, with policy address **`192.168.56.5/24`**. The VMs use separate NAT connectivity. The managed policy is stored at `/etc/ps008/managed/router-policy.json`.
 
-- 📋 **[Evaluator walkthrough and verified results](docs/evaluator-guide.md)** — the fastest way to assess what works and what is demonstrated.
-- 🧭 **[Architecture diagram](docs/architecture.md)** — reviewed change workflow and Wazuh monitoring.
-- 📸 **[Wazuh screenshot gallery](lab/README.md#evidence)** — agent, alerts, file differences, compliance view and SCA evidence from the earlier monitoring lab.
-- 🧪 **[Automated test evidence](evidence/test-results.txt)** — recorded test output; rerun tests to verify current state.
-- 🛠️ **[Managed deployment code](src/real_deployment.py)** and **[deployment tests](src/test_real_deployment.py)**.
-- 🎥 **[Team introduction video](https://youtube.com/shorts/BY337KfnYno?feature=share)**.
+## Verified end-to-end demonstration
 
-**Verified end-to-end demonstration:** Rejected proposal blocked; approved policy **v5 → v6** deployed on the Router VM, v5 backed up, `REAL_POLICY_DEPLOYED` logged, and Wazuh **rule 550** detected a real-time modification to `/etc/ps008/managed/router-policy.json`.
-
-> **Scope:** The real deployment updates a managed JSON policy file, **not live network interfaces or routing tables**. The reviewer identity in the demonstration is supplied, not independently authenticated. The repository screenshot gallery primarily documents the earlier Wazuh monitoring lab; the final v6 managed-policy alert was verified during the live demo and should be added as a separate screenshot when available.
-
-<!-- PS008 EVALUATOR END -->
-
----
-
-# AIORI PS-008 — Network Management Agent for Reviewed Configuration Changes
-
-**AIORI Hackathon 3 — Ultimateblueteam**
-
-**Problem Statement:** PS008 — Network Management Agent for Reviewed Configuration Changes
-
-## Team Introduction Video
-
-**YouTube Link:** https://youtube.com/shorts/BY337KfnYno?feature=share
-
----
-
-## 1. Project Overview
-
-The Network Management Agent is a prototype designed to validate proposed network configuration changes, generate candidate configurations, require human approval, and simulate safe deployment.
-
-The system aims to reduce the risks associated with network configuration changes by validating proposed modifications before deployment and preventing unapproved changes from being applied.
-
-The prototype includes interface IP validation, static route validation, routing-loop detection, candidate integrity checks, stale-configuration protection, deployment verification, rollback handling, and audit logging.
-
-The project uses an in-memory router testbed to demonstrate the configuration management workflow without modifying physical network devices.
-
-## 2. Objectives
-
-The main objectives of this project are:
-
-- Accept supported network configuration intents.
-- Validate requested changes before generating a candidate configuration.
-- Generate candidate configurations for human review.
-- Require explicit approval before deployment.
-- Detect invalid interface configurations and conflicting static routes.
-- Identify potential routing-loop risks using the implemented topology validator.
-- Detect modifications to a candidate after approval when its stored fingerprint remains unchanged.
-- Prevent deployment when the original router configuration has changed since the candidate was generated.
-- Verify the result of a simulated deployment.
-- Restore the previous configuration when simulated deployment verification fails.
-- Record important workflow events in a local JSON audit log.
-- Test the implementation using an automated test suite.
-
-## 3. Supported Configuration Intents
-
-The prototype supports two configuration intent types.
-
-### 3.1 Change Interface IP
-
-This intent changes the IP address assigned to a supported router interface.
-
-**Example:**
-
-```json
-{
-  "type": "change_interface_ip",
-  "router": "R1",
-  "interface": "eth0",
-  "new_ip": "10.0.12.10/24"
-}
-```
-
-The system validates the intent, checks the target router and interface, validates the proposed IP address, and generates a candidate configuration for review.
-
-The proposed configuration is not applied to the router state during candidate generation.
-
-### 3.2 Add Static Route
-
-This intent adds a static route to a supported router's configuration.
-
-**Example:**
-
-```json
-{
-  "type": "add_static_route",
-  "router": "R1",
-  "destination": "192.168.30.0/24",
-  "next_hop": "10.0.12.2"
-}
-```
-
-The route validator checks the route's address syntax, destination conflicts, and next-hop reachability using the implemented connected-network model.
-
-A valid route is prepared as a candidate configuration for human review before deployment.
-
-## 4. System Architecture
-
-The application is organized into modules responsible for validation, candidate generation, approval, deployment, topology checks, and audit logging.
-
-### Main Components
-
-| Component | Responsibility |
+| Stage | Observed outcome |
 |---|---|
-| `routers.py` | Maintains the simulated router configurations |
-| `intents.py` | Validates supported configuration intent structures and values |
-| `validator.py` | Validates interface configuration changes |
-| `route_validator.py` | Validates static route configurations |
-| `topology_validator.py` | Detects cycles in the implemented router topology graph |
-| `candidate_generator.py` | Creates and validates proposed configuration candidates |
-| `approval.py` | Records human review decisions and checks candidate fingerprints |
-| `deployment.py` | Simulates deployment, verifies outcomes, and handles rollback |
-| `audit_log.py` | Records workflow events in a local JSON audit log |
-| `main.py` | Coordinates the complete configuration management workflow |
+| **Reject** | A rejected candidate was blocked; policy version 5 remained unchanged |
+| **Approve** | A reviewed candidate deployed managed policy **v5 → v6** |
+| **Protect** | `enp0s8` and `192.168.56.5/24` were preserved |
+| **Recover** | A timestamped backup of version 5 was created |
+| **Audit** | `REAL_POLICY_DEPLOYED` recorded version 6 deployment |
+| **Monitor** | Wazuh rule **550**, level **7**, reported a real-time modification of the managed policy file |
 
-Automated tests are included in the `src` directory.
+**Evidence note:** The final version 6 alert was verified in the live demonstration. The screenshots below document the earlier Wazuh FIM and compliance monitoring lab; they should not be mistaken for screenshots of that final v6 event. See the [evaluator walkthrough](docs/evaluator-guide.md) for the evidence-to-requirement mapping.
 
-## 5. System Workflow
+## Wazuh evidence gallery
 
-The application follows a controlled configuration change workflow.
+### Agent connectivity
 
-1. **Intent validation:** The requested configuration change is checked for valid structure and supported values.
-2. **Candidate generation:** A proposed configuration is created without immediately modifying the router's current configuration.
-3. **Configuration validation:** The proposed change is checked against the relevant interface, IP address, or static route rules.
-4. **Topology validation:** The implemented topology validator checks for routing cycles.
-5. **Human review:** A reviewer approves or rejects the candidate.
-6. **Approval verification:** Deployment is blocked if the candidate is not approved or if its integrity check fails.
-7. **Stale configuration check:** The deployment process checks whether the router configuration still matches the candidate's original configuration.
-8. **Deployment:** An approved and valid candidate is applied to the simulated router configuration.
-9. **Verification:** The deployment process checks the simulated deployment result.
-10. **Rollback:** If simulated deployment verification fails, the previous configuration is restored and verified.
-11. **Audit logging:** Relevant workflow events and outcomes are recorded in the local audit log.
+![Wazuh agent active in dashboard](lab/screenshots/01-agent-active.png)
 
-## 6. Safety Features
+### File integrity and rule alerts
 
-### 6.1 Intent Validation
+![Wazuh rule events](lab/screenshots/02-events-rules-100110-100112.png)
 
-The system validates incoming configuration requests before processing them. Unsupported intent types and invalid input values are rejected.
+### File modification details
 
-### 6.2 Interface and IP Validation
+![Wazuh file integrity diff](lab/screenshots/03-fim-diff.png)
 
-Interface configuration changes are checked for valid router and interface references, valid IP addressing, and duplicate IP conflicts covered by the implementation.
+<details>
+<summary><strong>Additional monitoring evidence — GDPR and CIS/SCA</strong></summary>
 
-### 6.3 Static Route Validation
+**GDPR-related view**
 
-Static route validation checks destination and next-hop syntax, duplicate destinations, and next-hop reachability on directly connected networks.
+![Wazuh GDPR view](lab/screenshots/04-gdpr-view.png)
 
-### 6.4 Routing-Loop Detection
+**CIS Ubuntu security configuration assessment**
 
-The topology validator constructs a graph based on the implemented router and route relationships and uses cycle detection to identify potential routing-loop risks.
+![Wazuh CIS Ubuntu SCA](lab/screenshots/05-sca-cis-ubuntu.png)
 
-This is a simplified topology model rather than a complete destination-aware forwarding simulator.
+</details>
 
-### 6.5 Human Approval Gate
+[Open the full screenshot gallery and monitoring setup](lab/README.md#evidence).
 
-Candidate configurations require an approval decision before deployment.
+## What the code implements
 
-Rejected or unapproved candidates cannot proceed through the normal deployment workflow.
+| Capability | Implementation |
+|---|---|
+| Validate interface IP and static-route intents | [`src/intents.py`](src/intents.py), [`src/validator.py`](src/validator.py), [`src/route_validator.py`](src/route_validator.py) |
+| Generate candidate configurations | [`src/candidate_generator.py`](src/candidate_generator.py) |
+| Detect simplified topology cycles | [`src/topology_validator.py`](src/topology_validator.py) |
+| Review and fingerprint candidates | [`src/approval.py`](src/approval.py) |
+| Simulate deployment and rollback | [`src/deployment.py`](src/deployment.py) |
+| Apply versioned managed JSON policies with backup and verification | [`src/real_deployment.py`](src/real_deployment.py) |
+| Record local audit events | [`src/audit_log.py`](src/audit_log.py) |
+| Coordinate demonstrations | [`src/main.py`](src/main.py) |
 
-### 6.6 Candidate Integrity Check
+The SHA-256 fingerprint checks candidate consistency; it is **not** a digital signature. The demonstration reviewer identity is supplied rather than independently authenticated. Local JSON audit records are not tamper-proof, and deployment does not yet have cross-process locking.
 
-The approval module calculates a SHA-256 fingerprint from the candidate's router, original configuration, and proposed configuration.
+## Run the project
 
-During deployment, the system compares the current fingerprint with the stored fingerprint to detect candidate modifications made after approval.
-
-This is an integrity consistency check. It does not provide a cryptographic signature or protect against an attacker who can modify both the candidate and its stored fingerprint.
-
-### 6.7 Stale Configuration Protection
-
-The deployment process checks whether the router's current configuration matches the original configuration recorded in the candidate.
-
-If the configuration has changed since candidate generation, deployment is blocked to avoid applying a proposal based on outdated state.
-
-### 6.8 Deployment Verification and Rollback
-
-The deployment module supports successful deployment and simulated failure scenarios.
-
-If verification fails, the system attempts to restore the previous configuration and verifies the restoration.
-
-### 6.9 Audit Logging
-
-The application records relevant workflow events, including intent validation, candidate generation, approval decisions, deployment outcomes, and rollback results.
-
-Audit records are stored locally in a JSON file.
-
-## 7. Simulated Router Testbed
-
-The prototype uses three simulated routers.
-
-| Router | Interface | Initial IP Address |
-|---|---|---|
-| R1 | eth0 | 10.0.12.1/24 |
-| R2 | eth0 | 10.0.12.2/24 |
-| R2 | eth1 | 10.0.23.2/24 |
-| R3 | eth0 | 10.0.23.3/24 |
-
-The router configurations are maintained in memory.
-
-The testbed is used to demonstrate configuration validation, candidate generation, human approval, deployment verification, and rollback behavior.
-
-The prototype does not directly configure physical routers.
-
-## 8. Running the Project
-
-### Prerequisites
-
-- Python 3.10 or later is recommended.
-- Git, if you want to clone the repository.
-- Visual Studio Code or another Python-compatible editor is optional.
-
-### Step 1: Clone the Repository
+**Prerequisite:** Python 3.10 or newer.
 
 ```bash
 git clone https://github.com/aiori-hackathon/A3-PS008-TC324.git
+cd A3-PS008-TC324
+python -m unittest discover -s src -p 'test_*.py' -v
+python src/main.py
 ```
 
-### Step 2: Open the Project Directory
+The default demo exercises the **in-memory** router workflow, including successful deployment and simulated failure/rollback. The recorded test run passed **26 tests**; rerun the command above to verify the current checkout.
+
+### Managed-policy demonstration (Ubuntu Router VM only)
+
+Requires the configured lab environment and write access to `/etc/ps008/managed/`. Run from the `src` directory using the project's virtual environment:
 
 ```bash
-cd A3-PS008-TC324
+cd src
+sudo ../.venv/bin/python -c "from main import run_managed_policy_workflow; run_managed_policy_workflow(decision='reject', reviewer='demo-reviewer')"
+sudo ../.venv/bin/python -c "from main import run_managed_policy_workflow; run_managed_policy_workflow(decision='approve', reviewer='demo-reviewer')"
+sudo python3 -m json.tool /etc/ps008/managed/router-policy.json
 ```
 
-### Step 3: Run the Demonstration
+**Note:** Approval increments the current managed policy version. Re-running it may produce a later version than the documented v5 → v6 demonstration. It changes a managed JSON file, not live network routing.
 
-On Windows PowerShell, execute:
+## Evaluation links
 
-```powershell
-python .\src\main.py
-```
-
-The demonstration runs two scenarios.
-
-**Demo 1 — Successful Deployment**
-
-- The intent is validated.
-- A candidate configuration is generated.
-- The reviewer approves the candidate.
-- The deployment succeeds.
-- The status becomes `DEPLOYED`.
-- R1's interface IP changes from `10.0.12.1/24` to `10.0.12.10/24`.
-
-**Demo 2 — Deployment Failure and Rollback**
-
-- A second candidate proposes changing R1's IP to `10.0.12.20/24`.
-- The reviewer approves the candidate.
-- Simulated deployment verification fails.
-- The previous configuration is restored and verified.
-- The status becomes `ROLLED_BACK`.
-- R1 retains the IP address `10.0.12.10/24`, which was its configuration before the second deployment attempt.
-
-These demonstrations simulate deployment behavior using in-memory configurations. They do not modify physical routers.
-
-## 9. Running Automated Tests
-
-The project includes automated tests for configuration validation, candidate generation, approval, topology checks, deployment safety, and rollback.
-
-From the project root, execute:
-
-```powershell
-python -m unittest discover -s src -p "test_*.py" -v
-```
-
-### Test Results
-
-The current test suite contains **26 automated tests**.
-
-The suite has been executed successfully during development, with all 26 tests passing.
-
-The tests cover areas including:
-
-- Valid and invalid interface IP changes.
-- Invalid router and interface references.
-- Static route validation.
-- Routing-cycle detection.
-- Candidate generation and workflow safety.
-- Human approval and rejection.
-- Candidate modification after approval.
-- Stale configuration detection.
-- Successful interface and static route workflows.
-- Simulated deployment failure and rollback.
-
-Run the test command again after modifying the code to verify the current state.
-
-## 10. Project Structure
-
-```text
-A3-PS008-TC324/
-│
-├── README.md
-│
-└── src/
-    ├── main.py
-    ├── routers.py
-    ├── intents.py
-    ├── validator.py
-    ├── route_validator.py
-    ├── topology_validator.py
-    ├── candidate_generator.py
-    ├── approval.py
-    ├── deployment.py
-    ├── audit_log.py
-    │
-    ├── test_validator.py
-    ├── test_candidate_loop.py
-    ├── test_workflow_safety.py
-    ├── test_approval_workflow.py
-    ├── test_stale_configuration.py
-    ├── test_successful_workflows.py
-    ├── test_topology.py
-    └── test_topology_safety.py
-```
-
-The structure above lists the main application and test modules. Additional repository files may be present.
-
-## 11. Implementation Limitations
-
-The current implementation is a prototype intended to demonstrate a reviewed configuration change workflow.
-
-Its limitations include:
-
-- Router configurations are maintained in memory and reset when the program starts.
-- Router interface and route changes are simulated in memory. A separate deployment adapter writes approved JSON policies to a Wazuh-monitored file on the Ubuntu Router VM. The prototype does not modify live network interfaces, routing tables, or physical routers.
-- The demonstration reviewer identity is hard-coded.
-- The approval fingerprint detects changes when the stored fingerprint remains unchanged; it is not a digital signature.
-- Routing-loop detection uses the implemented topology graph and does not represent a complete production routing simulator.
-- Static route validation uses a simplified connected-network model.
-- Audit records are stored locally in JSON and are not tamper-proof.
-- The audit log is not designed as a production-grade immutable record system.
-- The application does not provide a complete multi-vendor network management interface.
-
-These limitations should be considered when interpreting the results and evaluating production suitability.
-
-## 12. Future Improvements
-
-Potential future enhancements include:
-
-- Adding an authenticated human-review interface.
-- Integrating with a network device simulator.
-- Supporting secure configuration adapters for selected network platforms.
-- Improving destination-aware forwarding analysis and routing-loop detection.
-- Adding stronger candidate approval signatures and integrity protections.
-- Improving audit-log durability and tamper detection.
-- Expanding automated tests for additional routing and configuration edge cases.
-- Developing a graphical interface for candidate review and deployment status.
-- Adding structured deployment reports and configuration diffs.
-- Improving persistent storage and recovery behavior.
-
-## 13. Conclusion
-
-The AIORI PS-008 Network Management Agent demonstrates a controlled approach to network configuration changes.
-
-The prototype validates supported intents, generates candidate configurations, requires human approval, checks candidate integrity and configuration freshness, and simulates deployment verification and rollback.
-
-The automated test suite provides evidence that the implemented safety behaviors work for the tested scenarios.
-
-The project establishes a foundation for further development toward more comprehensive and realistic network configuration management.
+- **[Evaluator walkthrough](docs/evaluator-guide.md)** — what works, evidence, limitations, and a concise assessment path.
+- **[System architecture](docs/architecture.md)** — reviewed-change and Wazuh monitoring flows.
+- **[Recorded test results](evidence/test-results.txt)** — development-run output.
+- **[Managed deployment tests](src/test_real_deployment.py)** — safety and rollback scenarios.
+- **[Wazuh lab documentation](lab/README.md)** — FIM setup and screenshots.
+- **[Team introduction video](https://youtube.com/shorts/BY337KfnYno?feature=share)**.
 
 ---
 
-**Project:** AIORI PS-008 — Network Management Agent for Reviewed Configuration Changes  
-**Team:** Ultimateblueteam  
-**Hackathon:** AIORI Hackathon 3
+<div align="center">
 
----
+**AIORI Hackathon 3 · PS008 · Ultimateblueteam**
 
-## 14. Wazuh-Integrated Policy Deployment
+*Review first. Deploy safely. Monitor independently.*
 
-The PS008 prototype includes a Python-based managed policy
-deployment workflow integrated with Wazuh File Integrity
-Monitoring (FIM).
-
-### Architecture
-
-- Ubuntu Router VM: Python agent and Wazuh agent
-- Wazuh Server VM: centralized monitoring and alerts
-- Managed policy: `/etc/ps008/managed/router-policy.json`
-- Deployment module: `src/real_deployment.py`
-- Wazuh integration: `src/wazuh_integration.py`
-
-### Reviewed Deployment Workflow
-
-1. Read the current managed policy.
-2. Generate a proposed policy.
-3. Record the review decision.
-4. Verify approval and candidate integrity.
-5. Reject stale or unsafe configurations.
-6. Protect the management interface and IP address.
-7. Back up the previous policy.
-8. Apply and verify the approved policy.
-9. Record the deployment in the audit log.
-10. Detect the file change through Wazuh FIM.
-
-### Verified Results
-
-- Successfully deployed managed policy version 5.
-- Preserved management interface `enp0s8`.
-- Preserved management IP `192.168.56.5/24`.
-- Recorded audit event `REAL_POLICY_DEPLOYED`.
-- Detected the modification through Wazuh rule `550`.
-- Passed 26 automated tests.
-
-### Scope and Limitations
-
-The real deployment workflow modifies a managed JSON policy
-file, not live network interfaces or routing tables.
-
-Reviewer identities are supplied by the demonstration workflow,
-not independently authenticated. Approval fingerprints are
-integrity checks rather than digital signatures.
-
-The prototype does not provide cross-process deployment locking,
-fully transactional crash recovery, or tamper-proof audit logs.
-
----
-
-## 15. Final Demonstration
-
-The hackathon demonstration covers:
-
-1. Validating a network configuration request.
-2. Generating a candidate configuration.
-3. Rejecting an unapproved change.
-4. Approving a reviewed configuration.
-5. Deploying a managed JSON policy.
-6. Verifying the policy version and backup.
-7. Reviewing the deployment audit log.
-8. Viewing the Wazuh file integrity alert.
-
-### Run the Automated Tests
-
-From the project root:
-
-    python -m unittest discover -s src -p 'test*.py' -v
-
-Expected result: 26 tests passing.
-
-### Run the Simulated Router Demo
-
-    python src/main.py
-
-This demonstrates successful deployment and rollback
-using in-memory router configurations.
-
-### Run the Managed Policy Demo
-
-From the src directory:
-
-    python -c "from main import run_managed_policy_workflow; run_managed_policy_workflow('reject', 'demo-reviewer')"
-
-This demonstrates rejection without changing the
-managed policy file.
-
-An approved deployment can be demonstrated by replacing
-'reject' with 'approve'. This writes a new policy version
-to the managed JSON file.
-
-### Important Project Files
-
-- src/main.py: workflow orchestration
-- src/approval.py: review and integrity verification
-- src/deployment.py: simulated deployment
-- src/real_deployment.py: managed policy deployment
-- src/wazuh_integration.py: Wazuh artifact publication
-- src/audit_log.py: audit logging
-- src/test_real_deployment.py: managed deployment tests
-- evidence/approved-policy-v5.json: verified policy
-- evidence/test-results.txt: test evidence
-
-### Security Note
-
-The managed policy demo does not modify live network
-interfaces, Netplan configuration, or routing tables.
-
-
-## 16. System Architecture
-
-See the [PS008 architecture diagram](docs/architecture.md) for the reviewed configuration workflow, deployment pipeline, and Wazuh integration.
+</div>

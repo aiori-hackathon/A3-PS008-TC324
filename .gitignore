@@ -5,3 +5,20 @@ venv/
 .env
 .pytest_cache/
 src/audit_log.json
+# Local audit data
+evidence/audit-log.json
+
+# Temporary source backups
+*.backup
+*.before-*
+
+# Local environment and sensitive files
+*.key
+*.pem
+*.secret
+
+# Local documentation backups
+*.pre-final-update
+
+# Historical one-off deployment demo
+src/deploy_version4_demo.py

@@ -247,9 +247,9 @@ python -m unittest discover -s src -p "test_*.py" -v
 
 ### Test Results
 
-The current test suite contains **20 automated tests**.
+The current test suite contains **26 automated tests**.
 
-The suite has been executed successfully during development, with all 20 tests passing.
+The suite has been executed successfully during development, with all 26 tests passing.
 
 The tests cover areas including:
 
@@ -304,7 +304,7 @@ The current implementation is a prototype intended to demonstrate a reviewed con
 Its limitations include:
 
 - Router configurations are maintained in memory and reset when the program starts.
-- Deployment is simulated; the prototype does not configure physical routers.
+- Router interface and route changes are simulated in memory. A separate deployment adapter writes approved JSON policies to a Wazuh-monitored file on the Ubuntu Router VM. The prototype does not modify live network interfaces, routing tables, or physical routers.
 - The demonstration reviewer identity is hard-coded.
 - The approval fingerprint detects changes when the stored fingerprint remains unchanged; it is not a digital signature.
 - Routing-loop detection uses the implemented topology graph and does not represent a complete production routing simulator.
@@ -345,3 +345,118 @@ The project establishes a foundation for further development toward more compreh
 **Project:** AIORI PS-008 — Network Management Agent for Reviewed Configuration Changes  
 **Team:** Ultimateblueteam  
 **Hackathon:** AIORI Hackathon 3
+
+---
+
+## 14. Wazuh-Integrated Policy Deployment
+
+The PS008 prototype includes a Python-based managed policy
+deployment workflow integrated with Wazuh File Integrity
+Monitoring (FIM).
+
+### Architecture
+
+- Ubuntu Router VM: Python agent and Wazuh agent
+- Wazuh Server VM: centralized monitoring and alerts
+- Managed policy: `/etc/ps008/managed/router-policy.json`
+- Deployment module: `src/real_deployment.py`
+- Wazuh integration: `src/wazuh_integration.py`
+
+### Reviewed Deployment Workflow
+
+1. Read the current managed policy.
+2. Generate a proposed policy.
+3. Record the review decision.
+4. Verify approval and candidate integrity.
+5. Reject stale or unsafe configurations.
+6. Protect the management interface and IP address.
+7. Back up the previous policy.
+8. Apply and verify the approved policy.
+9. Record the deployment in the audit log.
+10. Detect the file change through Wazuh FIM.
+
+### Verified Results
+
+- Successfully deployed managed policy version 5.
+- Preserved management interface `enp0s8`.
+- Preserved management IP `192.168.56.5/24`.
+- Recorded audit event `REAL_POLICY_DEPLOYED`.
+- Detected the modification through Wazuh rule `550`.
+- Passed 26 automated tests.
+
+### Scope and Limitations
+
+The real deployment workflow modifies a managed JSON policy
+file, not live network interfaces or routing tables.
+
+Reviewer identities are supplied by the demonstration workflow,
+not independently authenticated. Approval fingerprints are
+integrity checks rather than digital signatures.
+
+The prototype does not provide cross-process deployment locking,
+fully transactional crash recovery, or tamper-proof audit logs.
+
+---
+
+## 15. Final Demonstration
+
+The hackathon demonstration covers:
+
+1. Validating a network configuration request.
+2. Generating a candidate configuration.
+3. Rejecting an unapproved change.
+4. Approving a reviewed configuration.
+5. Deploying a managed JSON policy.
+6. Verifying the policy version and backup.
+7. Reviewing the deployment audit log.
+8. Viewing the Wazuh file integrity alert.
+
+### Run the Automated Tests
+
+From the project root:
+
+    python -m unittest discover -s src -p 'test*.py' -v
+
+Expected result: 26 tests passing.
+
+### Run the Simulated Router Demo
+
+    python src/main.py
+
+This demonstrates successful deployment and rollback
+using in-memory router configurations.
+
+### Run the Managed Policy Demo
+
+From the src directory:
+
+    python -c "from main import run_managed_policy_workflow; run_managed_policy_workflow('reject', 'demo-reviewer')"
+
+This demonstrates rejection without changing the
+managed policy file.
+
+An approved deployment can be demonstrated by replacing
+'reject' with 'approve'. This writes a new policy version
+to the managed JSON file.
+
+### Important Project Files
+
+- src/main.py: workflow orchestration
+- src/approval.py: review and integrity verification
+- src/deployment.py: simulated deployment
+- src/real_deployment.py: managed policy deployment
+- src/wazuh_integration.py: Wazuh artifact publication
+- src/audit_log.py: audit logging
+- src/test_real_deployment.py: managed deployment tests
+- evidence/approved-policy-v5.json: verified policy
+- evidence/test-results.txt: test evidence
+
+### Security Note
+
+The managed policy demo does not modify live network
+interfaces, Netplan configuration, or routing tables.
+
+
+## 16. System Architecture
+
+See the [PS008 architecture diagram](docs/architecture.md) for the reviewed configuration workflow, deployment pipeline, and Wazuh integration.

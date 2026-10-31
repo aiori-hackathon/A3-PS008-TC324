@@ -1,0 +1,63 @@
+test_rejected_candidate_is_not_deployed (test_approval_workflow.TestApprovalWorkflow) ... ok
+test_loop_candidate_is_rejected (test_candidate_loop.TestCandidateLoop) ... ok
+test_audit_failure_does_not_rollback (test_real_deployment.TestRealDeployment) ... ok
+test_management_network_protected (test_real_deployment.TestRealDeployment) ... ok
+test_simulated_failure_rolls_back (test_real_deployment.TestRealDeployment) ... ok
+test_stale_configuration_blocked (test_real_deployment.TestRealDeployment) ... ok
+test_successful_deployment_audited (test_real_deployment.TestRealDeployment) ... ok
+test_unapproved_deployment_blocked (test_real_deployment.TestRealDeployment) ... ok
+test_stale_candidate_is_blocked (test_stale_configuration.TestStaleConfiguration) ... ok
+test_interface_ip_change_success (test_successful_workflows.TestSuccessfulWorkflows) ... ok
+test_static_route_addition_success (test_successful_workflows.TestSuccessfulWorkflows) ... ok
+test_directed_routing_loop_is_rejected (test_topology_safety.TestTopologySafety) ... ok
+test_normal_topology_is_accepted (test_topology_safety.TestTopologySafety) ... ok
+test_validation_does_not_modify_original_network (test_topology_safety.TestTopologySafety) ... ok
+test_duplicate_ip_address (test_validator.TestConfigurationValidator) ... ok
+test_invalid_ip_address (test_validator.TestConfigurationValidator) ... ok
+test_unknown_interface (test_validator.TestConfigurationValidator) ... ok
+test_unknown_router (test_validator.TestConfigurationValidator) ... ok
+test_valid_ip_change (test_validator.TestConfigurationValidator) ... ok
+test_conflicting_static_route_rejected (test_workflow_safety.TestWorkflowSafety) ... ok
+test_failed_deployment_rolls_back (test_workflow_safety.TestWorkflowSafety) ... ok
+test_invalid_static_route_rejected (test_workflow_safety.TestWorkflowSafety) ... ok
+test_missing_approval_blocks_deployment (test_workflow_safety.TestWorkflowSafety) ... ok
+test_modified_candidate_after_approval_is_not_deployed (test_workflow_safety.TestWorkflowSafety) ... ok
+test_rejected_approval_blocks_deployment (test_workflow_safety.TestWorkflowSafety) ... ok
+test_unsupported_intent_rejected (test_workflow_safety.TestWorkflowSafety) ... ok
+
+----------------------------------------------------------------------
+Ran 26 tests in 0.058s
+
+OK
+Routing loop test: Routing loop detected in graph: {'R1': ['R2'], 'R2': ['R3'], 'R3': ['R1']}
+Candidate should be rejected: True
+
+Original network remains unchanged:
+{'R1': {'interfaces': {'eth0': '10.0.12.1/24'}, 'routes': []}, 'R2': {'interfaces': {'eth0': '10.0.12.2/24', 'eth1': '10.0.23.2/24'}, 'routes': []}, 'R3': {'interfaces': {'eth0': '10.0.23.3/24'}, 'routes': []}}
+
+=== AIORI PS008 Network Management Agent ===
+1. Intent validation: Intent structure and values are valid.
+2. Candidate generation: Candidate generated. Human review is required.
+   Status: PENDING_REVIEW
+3. Human review: Candidate REJECTED by demo-reviewer.
+Deployment blocked: candidate was not approved.
+
+Loop-producing candidate rejected: Routing loop detected in graph: {'R1': ['R2'], 'R2': ['R3'], 'R3': ['R1']}
+
+=== AIORI PS008 Network Management Agent ===
+1. Intent validation: Intent structure and values are valid.
+2. Candidate generation: Candidate generated. Human review is required.
+   Status: PENDING_REVIEW
+3. Human review: Candidate APPROVED by demo-reviewer.
+4. Deployment: Deployment successful on R1.
+   Final status: DEPLOYED
+5. Wazuh artifact published: PS008-A0791A6C
+
+=== AIORI PS008 Network Management Agent ===
+1. Intent validation: Intent structure and values are valid.
+2. Candidate generation: Candidate generated. Human review is required.
+   Status: PENDING_REVIEW
+3. Human review: Candidate APPROVED by demo-reviewer.
+4. Deployment: Deployment successful on R1.
+   Final status: DEPLOYED
+5. Wazuh artifact published: PS008-CFE71DC6

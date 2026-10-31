@@ -11,6 +11,7 @@ def _candidate_fingerprint(candidate):
         "router": candidate.get("router"),
         "before": candidate.get("before"),
         "proposed": candidate.get("proposed"),
+        "proposed_policy": candidate.get("proposed_policy"),
     }
 
     serialized = json.dumps(

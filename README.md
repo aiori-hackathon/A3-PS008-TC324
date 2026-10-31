@@ -1,3 +1,32 @@
+<!-- PS008 EVALUATOR START -->
+## 🚀 Start Here — Hackathon Evaluator Guide
+
+**AIORI Hackathon 3 · Problem Statement PS008 · Team Ultimateblueteam**
+
+**What we built:** A reviewed network-configuration prototype with candidate validation, an explicit approval/rejection gate, protected management settings, versioned managed-policy deployment, backups, rollback handling, audit records, and independent Wazuh file-integrity monitoring. The project also includes an in-memory router simulator for interface and route changes.
+
+| Lab component | Host-only IP | Role |
+|---|---|---|
+| **Wazuh Server VM** | **`192.168.56.3`** | Wazuh manager, indexer, dashboard |
+| **Ubuntu Router / Wazuh Agent VM** | **`192.168.56.5`** | Python workflow, managed policy, Wazuh agent |
+
+**Judge-friendly navigation:**
+
+- 📋 **[Evaluator walkthrough and verified results](docs/evaluator-guide.md)** — the fastest way to assess what works and what is demonstrated.
+- 🧭 **[Architecture diagram](docs/architecture.md)** — reviewed change workflow and Wazuh monitoring.
+- 📸 **[Wazuh screenshot gallery](lab/README.md#evidence)** — agent, alerts, file differences, compliance view and SCA evidence from the earlier monitoring lab.
+- 🧪 **[Automated test evidence](evidence/test-results.txt)** — recorded test output; rerun tests to verify current state.
+- 🛠️ **[Managed deployment code](src/real_deployment.py)** and **[deployment tests](src/test_real_deployment.py)**.
+- 🎥 **[Team introduction video](https://youtube.com/shorts/BY337KfnYno?feature=share)**.
+
+**Verified end-to-end demonstration:** Rejected proposal blocked; approved policy **v5 → v6** deployed on the Router VM, v5 backed up, `REAL_POLICY_DEPLOYED` logged, and Wazuh **rule 550** detected a real-time modification to `/etc/ps008/managed/router-policy.json`.
+
+> **Scope:** The real deployment updates a managed JSON policy file, **not live network interfaces or routing tables**. The reviewer identity in the demonstration is supplied, not independently authenticated. The repository screenshot gallery primarily documents the earlier Wazuh monitoring lab; the final v6 managed-policy alert was verified during the live demo and should be added as a separate screenshot when available.
+
+<!-- PS008 EVALUATOR END -->
+
+---
+
 # AIORI PS-008 — Network Management Agent for Reviewed Configuration Changes
 
 **AIORI Hackathon 3 — Ultimateblueteam**
